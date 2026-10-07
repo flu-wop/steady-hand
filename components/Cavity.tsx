@@ -5,12 +5,8 @@ import { useFrame } from "@react-three/fiber";
 import { AlwaysDepth, BackSide, Color, Group, MeshStandardMaterial } from "three";
 import {
   CAVITY_CENTER,
-  CAVITY_FLOOR_Y,
   GRAB_OFFSET,
-  PIECE_REST,
-  RIM_RADIUS,
-  RIM_TRIGGER_TUBE,
-  RIM_TUBE,
+  geo,
   getSnapshot,
   isHeld,
   sim,
@@ -50,11 +46,12 @@ export default function Cavity() {
     // When nothing holds the piece, it falls back into the cavity.
     if (!isHeld(state) && sim.pieceVisible) {
       const p = sim.piece;
-      p.x += (PIECE_REST.x - p.x) * Math.min(1, dt * 10);
-      p.z += (PIECE_REST.z - p.z) * Math.min(1, dt * 10);
-      if (p.y > PIECE_REST.y) {
+      const rest = geo.pieceRest;
+      p.x += (rest.x - p.x) * Math.min(1, dt * 10);
+      p.z += (rest.z - p.z) * Math.min(1, dt * 10);
+      if (p.y > rest.y) {
         fallSpeed.current += 9.8 * dt;
-        p.y = Math.max(PIECE_REST.y, p.y - fallSpeed.current * dt);
+        p.y = Math.max(rest.y, p.y - fallSpeed.current * dt);
       } else {
         fallSpeed.current = 0;
       }
@@ -68,7 +65,9 @@ export default function Cavity() {
     }
   });
 
-  const depth = CAVITY_CENTER.y - CAVITY_FLOOR_Y;
+  // Read once at mount; the scene remounts when the case changes.
+  const { rimRadius, rimTube, rimTriggerTube } = geo;
+  const depth = CAVITY_CENTER.y - geo.floorY;
 
   return (
     <group>
@@ -76,37 +75,37 @@ export default function Cavity() {
         {/* Hole interior */}
         <group renderOrder={INTERIOR_ORDER}>
           <mesh position={[0, -depth / 2, 0]}>
-            <cylinderGeometry args={[RIM_RADIUS, RIM_RADIUS, depth, 40, 1, true]} />
+            <cylinderGeometry args={[rimRadius, rimRadius, depth, 40, 1, true]} />
             <meshStandardMaterial color="#3a1c22" roughness={0.9} side={BackSide} />
           </mesh>
           <mesh position={[0, -depth, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[RIM_RADIUS, 40]} />
+            <circleGeometry args={[rimRadius, 40]} />
             <meshStandardMaterial color="#5a2630" roughness={0.9} />
           </mesh>
         </group>
 
         {/* Depth mask over the opening */}
         <mesh position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={MASK_ORDER}>
-          <circleGeometry args={[RIM_RADIUS, 40]} />
+          <circleGeometry args={[rimRadius, 40]} />
           <meshBasicMaterial colorWrite={false} depthFunc={AlwaysDepth} />
         </mesh>
 
         {/* Visible metal rim */}
         <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <torusGeometry args={[RIM_RADIUS, RIM_TUBE, 10, 48]} />
+          <torusGeometry args={[rimRadius, rimTube, 10, 48]} />
           <meshStandardMaterial ref={rimMat} color={METAL} metalness={0.9} roughness={0.25} />
         </mesh>
 
         {/* Invisible trigger. Tweezers.tsx tests the tips against these same
             dimensions analytically; this mesh is the reference shape. */}
         <mesh rotation={[Math.PI / 2, 0, 0]} visible={false}>
-          <torusGeometry args={[RIM_RADIUS, RIM_TRIGGER_TUBE, 8, 48]} />
+          <torusGeometry args={[rimRadius, rimTriggerTube, 8, 48]} />
           <meshBasicMaterial wireframe />
         </mesh>
       </group>
 
       {/* The piece: a stylized bone with a grab nub on top. */}
-      <group ref={piece} position={PIECE_REST} renderOrder={INTERIOR_ORDER}>
+      <group ref={piece} position={geo.pieceRest} renderOrder={INTERIOR_ORDER}>
         <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[0.028, 0.028, 0.2, 8]} />
           <meshStandardMaterial color={BONE} roughness={0.6} flatShading />

@@ -5,20 +5,16 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Mesh, Plane, Quaternion, Raycaster, Vector3 } from "three";
 import {
   CAVITY_CENTER,
-  CLEAR_HEIGHT,
-  DRIFT,
   GRAB_OFFSET,
   GRAB_RADIUS,
   HOVER_HEIGHT,
   LATERAL_SCALE,
   LIFT_SCALE,
   LIFT_START,
-  PIECE_REST,
-  RIM_RADIUS,
-  RIM_TRIGGER_TUBE,
   TIP_LENGTH,
   TIP_RADIUS,
   dispatch,
+  geo,
   getSnapshot,
   isHeld,
   sim,
@@ -37,7 +33,7 @@ const UP = new Vector3(0, 1, 0);
 function distToRim(p: Vector3) {
   const dx = p.x - CAVITY_CENTER.x;
   const dz = p.z - CAVITY_CENTER.z;
-  const radial = Math.hypot(dx, dz) - RIM_RADIUS;
+  const radial = Math.hypot(dx, dz) - geo.rimRadius;
   return Math.hypot(radial, p.y - CAVITY_CENTER.y);
 }
 
@@ -82,9 +78,8 @@ export default function Tweezers() {
     };
   }, [gl, pointer]);
 
-  useFrame(({ clock }, dt) => {
+  useFrame((_, dt) => {
     const { state } = getSnapshot();
-    const t = clock.elapsedTime;
     const { ray, plane, hit, target, base, dir, sample, q } = tmp;
 
     if (isHeld(state)) {
@@ -97,12 +92,6 @@ export default function Tweezers() {
       target.copy(sim.grabTip);
       if (lifting) target.x += (pointer.x - sim.grabNdc.x) * LATERAL_SCALE;
       target.y += lift;
-
-      // Drift: the higher the piece, the more the tips wobble.
-      const pieceLift = Math.max(0, sim.piece.y - PIECE_REST.y);
-      const amp = DRIFT * pieceLift;
-      target.x += amp * (0.6 * Math.sin(t * 7.3) + 0.4 * Math.sin(t * 13.1 + 1.7));
-      target.z += amp * (0.6 * Math.sin(t * 5.9 + 0.4) + 0.4 * Math.sin(t * 11.7 + 2.3));
 
       sim.tip.lerp(target, Math.min(1, dt * 18));
       halfGap.current += (CLOSED_HALF_GAP - halfGap.current) * Math.min(1, dt * 25);
@@ -137,7 +126,7 @@ export default function Tweezers() {
       if (held) {
         for (let s = 0; s <= 3; s++) {
           sample.copy(base).addScaledVector(dir, (TIP_LENGTH * s) / 3);
-          if (distToRim(sample) < RIM_TRIGGER_TUBE + TIP_RADIUS) rimHit = true;
+          if (distToRim(sample) < geo.rimTriggerTube + TIP_RADIUS) rimHit = true;
         }
       }
     });
@@ -146,12 +135,12 @@ export default function Tweezers() {
     const now = getSnapshot().state;
     if (now === "lifting") {
       if (rimHit) dispatch("RIM_HIT");
-      else if (sim.piece.y > CLEAR_HEIGHT) dispatch("CLEARED");
+      else if (sim.piece.y > geo.clearHeight) dispatch("CLEARED");
     } else if (now === "idle" || now === "hover") {
       const grab = sample.copy(sim.piece).add(GRAB_OFFSET);
       const over =
         sim.pieceVisible &&
-        sim.piece.y <= PIECE_REST.y + 0.001 &&
+        sim.piece.y <= geo.pieceRest.y + 0.001 &&
         Math.hypot(sim.tip.x - grab.x, sim.tip.z - grab.z) < GRAB_RADIUS;
       if (over && now === "idle") dispatch("TIPS_OVER");
       if (!over && now === "hover") dispatch("TIPS_LEFT");

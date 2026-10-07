@@ -70,3 +70,93 @@ body {
   letter-spacing: 0.02em;
   color: #9fe3b0;
 }
+
+.case-label {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.select {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  box-sizing: border-box;
+}
+
+.select h1 {
+  margin: 0;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.select-sub {
+  margin: 8px 0 28px;
+  opacity: 0.7;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 180px));
+  gap: 14px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  background: #18161b;
+  color: inherit;
+  border: 1px solid #34303a;
+  border-radius: 10px;
+  padding: 16px;
+  font: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.card:hover,
+.card:focus-visible {
+  border-color: #8a8392;
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.card-name {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.card-complaint {
+  font-size: 14px;
+  opacity: 0.8;
+  min-height: 2.6em;
+}
+
+.card-rule {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fe3b0;
+}
+
+@media (max-width: 1000px) {
+  .cards {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    width: 100%;
+    max-width: 560px;
+  }
+}

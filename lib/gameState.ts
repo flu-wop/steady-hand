@@ -1,18 +1,19 @@
 import { Vector3 } from "three";
+import { CASES, getCase, type Case } from "./cases";
 
 // ─── Tuning ─────────────────────────────────────────────────────────────────
 // Feel lives here. Change these first; nothing else should need touching.
 
-/** How much the tips wobble per unit of lift. 0 = rock steady. */
-export const DRIFT = 0.35;
-/** Piece origin height (world Y) that counts as "out". */
+/** Tip wobble. 0 for now; shake will come from pointer speed, not a timer. */
+export const DRIFT = 0;
+/** Piece origin height (world Y) that counts as "out", at depthScale 1. */
 export const CLEAR_HEIGHT = 1.5;
-/** Major radius of the metal rim around the cavity opening. */
+/** Major radius of the metal rim around the cavity opening, at rimScale 1. */
 export const RIM_RADIUS = 0.22;
 
-/** Visible rim tube radius. */
+/** Visible rim tube radius, at rimScale 1. */
 export const RIM_TUBE = 0.025;
-/** Invisible trigger tube radius. Slightly larger than the visible rim. */
+/** Invisible trigger tube radius, at rimScale 1. Slightly larger than the visible rim. */
 export const RIM_TRIGGER_TUBE = 0.04;
 /** Collision radius of each tip sample point. */
 export const TIP_RADIUS = 0.012;
@@ -35,10 +36,33 @@ export const BUZZ_MS = 700;
 
 /** Center of the cavity opening; the rim sits here. */
 export const CAVITY_CENTER = new Vector3(0.15, 1.2, 0);
-/** Floor of the cavity. */
+/** Floor of the cavity, at depthScale 1. */
 export const CAVITY_FLOOR_Y = 0.96;
-/** Piece origin when it is resting in the cavity. */
-export const PIECE_REST = new Vector3(CAVITY_CENTER.x, CAVITY_FLOOR_Y + 0.045, CAVITY_CENTER.z);
+/** Piece origin sits this far above the cavity floor. */
+const PIECE_REST_LIFT = 0.045;
+
+// ─── Active case geometry ───────────────────────────────────────────────────
+// Base constants above scaled by the active case. Mutated in place by
+// selectCase(); the scene mounts after a case is chosen and reads it then.
+
+export const geo = {
+  rimRadius: RIM_RADIUS,
+  rimTube: RIM_TUBE,
+  rimTriggerTube: RIM_TRIGGER_TUBE,
+  floorY: CAVITY_FLOOR_Y,
+  clearHeight: CLEAR_HEIGHT,
+  pieceRest: new Vector3(CAVITY_CENTER.x, CAVITY_FLOOR_Y + PIECE_REST_LIFT, CAVITY_CENTER.z),
+};
+
+function applyCase(c: Case) {
+  geo.rimRadius = RIM_RADIUS * c.rimScale;
+  geo.rimTube = RIM_TUBE * c.rimScale;
+  geo.rimTriggerTube = RIM_TRIGGER_TUBE * c.rimScale;
+  geo.floorY = CAVITY_CENTER.y - (CAVITY_CENTER.y - CAVITY_FLOOR_Y) * c.depthScale;
+  geo.clearHeight = CAVITY_CENTER.y + (CLEAR_HEIGHT - CAVITY_CENTER.y) * c.depthScale;
+  geo.pieceRest.set(CAVITY_CENTER.x, geo.floorY + PIECE_REST_LIFT, CAVITY_CENTER.z);
+}
+
 /** Grab point, relative to the piece origin. */
 export const GRAB_OFFSET = new Vector3(0, 0.05, 0);
 
@@ -74,7 +98,7 @@ export const sim = {
   /** Midpoint between the two tip ends. */
   tip: new Vector3(CAVITY_CENTER.x, HOVER_HEIGHT, 0.6),
   /** Piece origin. */
-  piece: PIECE_REST.clone(),
+  piece: geo.pieceRest.clone(),
   pieceVisible: true,
   /** Pointer NDC and tip position at the moment of the grab. */
   grabNdc: { x: 0, y: 0 },
@@ -83,8 +107,8 @@ export const sim = {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-type Snapshot = { state: GameState; score: number };
-let snapshot: Snapshot = { state: "idle", score: 0 };
+type Snapshot = { state: GameState; score: number; caseId: string | null };
+let snapshot: Snapshot = { state: "idle", score: 0, caseId: null };
 const listeners = new Set<() => void>();
 let buzzTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -100,16 +124,37 @@ const set = (next: Partial<Snapshot>) => {
 };
 
 function resetPiece() {
-  sim.piece.copy(PIECE_REST);
+  sim.piece.copy(geo.pieceRest);
   sim.pieceVisible = true;
+}
+
+function clearBuzz() {
+  if (buzzTimer) clearTimeout(buzzTimer);
+  buzzTimer = null;
+}
+
+export const activeCase = () => (snapshot.caseId ? getCase(snapshot.caseId) : CASES[0]);
+
+/** Pick a case from the select screen; mounts the scene. */
+export function selectCase(id: string) {
+  clearBuzz();
+  applyCase(getCase(id));
+  resetPiece();
+  set({ caseId: id, state: "idle" });
+}
+
+/** Back to the select screen. Score resets. */
+export function exitToCases() {
+  clearBuzz();
+  resetPiece();
+  set({ caseId: null, state: "idle", score: 0 });
 }
 
 export function dispatch(event: GameEvent) {
   const from = snapshot.state;
 
   if (event === "RESET") {
-    if (buzzTimer) clearTimeout(buzzTimer);
-    buzzTimer = null;
+    clearBuzz();
     resetPiece();
     set({ state: "idle" });
     return;
