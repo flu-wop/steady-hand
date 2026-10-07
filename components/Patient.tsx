@@ -20,9 +20,9 @@ export default function Patient() {
         <sphereGeometry args={[0.5, 12, 9]} />
         <meshStandardMaterial color={skin} roughness={0.75} flatShading />
       </mesh>
-      {/* Nose on the face, toward the camera: on the head's surface along
-          (0, 0.45, 0.89) from its center. */}
-      <mesh position={[-1.55, 0.6 + 0.48 * 0.45, 0.48 * 0.89]} castShadow>
+      {/* Nose on the face, toward the overhead camera: on the head's
+          surface along (0, 0.7, 0.71) from its center. */}
+      <mesh position={[-1.55, 0.6 + 0.48 * 0.7, 0.48 * 0.71]} castShadow>
         <sphereGeometry args={[0.07, 8, 6]} />
         <meshStandardMaterial color={skin} roughness={0.8} flatShading />
       </mesh>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import HeartRate from "./HeartRate";
+import ToolTray from "./ToolTray";
 import { activeCase, dispatch, exitToCases, getSnapshot, subscribe } from "@/lib/gameState";
 
 export default function GameUI() {
@@ -23,6 +25,8 @@ export default function GameUI() {
           {activeCase().name} · {activeCase().rule}
         </div>
       </div>
+      <HeartRate />
+      <ToolTray />
       <p className="instruction">Grab the piece. Lift it out. Don&apos;t touch the rim.</p>
       {state === "success" && <div className="clear">Clear.</div>}
     </div>

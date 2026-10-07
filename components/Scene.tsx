@@ -1,38 +1,54 @@
 "use client";
 
+import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
+import { Object3D } from "three";
+import { CAVITY_CENTER } from "@/lib/gameState";
 import Patient from "./Patient";
+import Drape from "./Drape";
 import Cavity from "./Cavity";
 import Tweezers from "./Tweezers";
 
+// Steep enough that the line of sight reaches the floor of the deepest
+// cavity (Deep, depthScale 1.6) through the opening.
+const CAMERA_POSITION: [number, number, number] = [-0.25, 5.2, 1.6];
+const CAMERA_TARGET: [number, number, number] = [-0.25, 0.7, 0.1];
+
 export default function Scene() {
+  const lampTarget = useMemo(() => {
+    const o = new Object3D();
+    o.position.copy(CAVITY_CENTER);
+    return o;
+  }, []);
+
   return (
     <Canvas
       shadows
       dpr={[1, 2]}
-      camera={{ position: [0, 4.3, 2.7], fov: 36 }}
-      onCreated={({ camera }) => camera.lookAt(0, 0.85, 0)}
+      camera={{ position: CAMERA_POSITION, fov: 36 }}
+      onCreated={({ camera }) => camera.lookAt(...CAMERA_TARGET)}
       style={{ position: "fixed", inset: 0, cursor: "none", touchAction: "none" }}
     >
       <color attach="background" args={["#0b0b0d"]} />
-      <fog attach="fog" args={["#0b0b0d", 6, 12]} />
+      <fog attach="fog" args={["#0b0b0d", 7, 13]} />
 
-      <ambientLight intensity={0.15} />
-      {/* Warm key, above and in front */}
-      <directionalLight
-        position={[-2.5, 5, 3]}
-        intensity={2.4}
-        color="#ffd2a1"
+      {/* Dim room fill */}
+      <hemisphereLight args={["#8a93a6", "#1a1418", 0.55]} />
+
+      {/* Overhead surgical lamp, aimed at the cavity */}
+      <primitive object={lampTarget} />
+      <spotLight
+        position={[CAVITY_CENTER.x + 0.3, 4.6, 0.9]}
+        target={lampTarget}
+        angle={0.42}
+        penumbra={0.6}
+        decay={0}
+        intensity={3.2}
+        color="#fff4e2"
         castShadow
         shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-3}
-        shadow-camera-right={3}
-        shadow-camera-top={3}
-        shadow-camera-bottom={-3}
-        shadow-bias={-0.0005}
+        shadow-bias={-0.0004}
       />
-      {/* Dim cool rim from behind */}
-      <directionalLight position={[2, 2.5, -4]} intensity={0.6} color="#8fb4ff" />
 
       {/* Table */}
       <mesh position={[0, -0.05, 0]} receiveShadow>
@@ -41,6 +57,7 @@ export default function Scene() {
       </mesh>
 
       <Patient />
+      <Drape />
       <Cavity />
       <Tweezers />
     </Canvas>
