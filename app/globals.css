@@ -1,0 +1,72 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0b0d;
+  color: #eee6da;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 15px;
+}
+
+.hud strong {
+  font-size: 22px;
+  margin-left: 6px;
+}
+
+.state {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.hud button {
+  pointer-events: auto;
+  cursor: pointer;
+  background: #2a2730;
+  color: inherit;
+  border: 1px solid #4a4552;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font: inherit;
+}
+
+.hud button:hover {
+  background: #36323d;
+}
+
+.instruction {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  opacity: 0.8;
+}
+
+.clear {
+  position: absolute;
+  top: 38%;
+  width: 100%;
+  text-align: center;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #9fe3b0;
+}
