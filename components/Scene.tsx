@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Object3D } from "three";
-import { CAVITY_CENTER, geo } from "@/lib/gameState";
+import { CAVITY_CENTER, geo, getSnapshot, subscribe } from "@/lib/gameState";
 import Patient from "./Patient";
 import Drape from "./Drape";
 import Cavity from "./Cavity";
 import Tweezers from "./Tweezers";
+import Swab from "./Swab";
+import Closure from "./Closure";
 
 // Steep enough that the line of sight reaches the floor of the deepest
 // cavity (Deep, depthScale 1.6) through the opening.
@@ -15,6 +17,8 @@ const CAMERA_POSITION: [number, number, number] = [-0.25, 5.2, 1.6];
 const CAMERA_TARGET: [number, number, number] = [-0.25, 0.7, 0.1];
 
 export default function Scene() {
+  // The tool in hand owns the pointer; with none picked, show the cursor.
+  const { tool } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const lampTarget = useMemo(() => {
     // Aim between the sites so one lamp covers them all.
     const o = new Object3D();
@@ -29,7 +33,7 @@ export default function Scene() {
       dpr={[1, 2]}
       camera={{ position: CAMERA_POSITION, fov: 36 }}
       onCreated={({ camera }) => camera.lookAt(...CAMERA_TARGET)}
-      style={{ position: "fixed", inset: 0, cursor: "none", touchAction: "none" }}
+      style={{ position: "fixed", inset: 0, cursor: tool === "none" ? "default" : "none", touchAction: "none" }}
     >
       <color attach="background" args={["#0b0b0d"]} />
       <fog attach="fog" args={["#0b0b0d", 7, 13]} />
@@ -64,6 +68,8 @@ export default function Scene() {
         <Cavity key={i} index={i} />
       ))}
       <Tweezers />
+      <Swab />
+      <Closure />
     </Canvas>
   );
 }

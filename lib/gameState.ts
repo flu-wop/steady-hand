@@ -34,6 +34,10 @@ export const GRAB_RADIUS = 0.08;
 export const HOVER_HEIGHT = 1.35;
 /** How long the buzz state lasts before the piece resets. */
 export const BUZZ_MS = 700;
+/** Swab meter gained per world unit dragged inside a window (0–100). */
+export const SWAB_PER_UNIT = 30;
+/** Hold the Close tool this long to close the case. */
+export const CLOSE_HOLD_MS = 1000;
 
 // ─── Layout (shared by the scene components) ────────────────────────────────
 
@@ -125,6 +129,13 @@ const TRANSITIONS: Record<GameState, Partial<Record<GameEvent, GameState>>> = {
 
 export const isHeld = (s: GameState) => s === "grabbed" || s === "lifting";
 
+// ─── Procedure ──────────────────────────────────────────────────────────────
+// Every case runs swab → extract → close. The extract step is the state
+// machine above; the other two only gate which tool can be used.
+
+export type Step = "swab" | "extract" | "close" | "closed";
+export type Tool = "none" | "swab" | "forceps" | "close";
+
 // ─── Mutable per-frame data (not React state) ───────────────────────────────
 
 export const sim = {
@@ -143,8 +154,17 @@ export const activeSite = () => geo.sites[sim.active];
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-type Snapshot = { state: GameState; score: number; caseId: string | null };
-let snapshot: Snapshot = { state: "idle", score: 0, caseId: null };
+type Snapshot = {
+  state: GameState;
+  score: number;
+  caseId: string | null;
+  step: Step;
+  tool: Tool;
+  /** Swab meter, 0–100. */
+  swab: number;
+};
+const FRESH_PROCEDURE = { step: "swab" as Step, tool: "none" as Tool, swab: 0 };
+let snapshot: Snapshot = { state: "idle", score: 0, caseId: null, ...FRESH_PROCEDURE };
 const listeners = new Set<() => void>();
 let buzzTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -181,24 +201,52 @@ export function selectCase(id: string) {
   applyCase(getCase(id));
   sim.active = 0;
   sim.hitSite = -1;
-  set({ caseId: id, state: "idle" });
+  set({ caseId: id, state: "idle", ...FRESH_PROCEDURE });
 }
 
 /** Back to the select screen. Score resets. */
 export function exitToCases() {
   clearBuzz();
   resetAll();
-  set({ caseId: null, state: "idle", score: 0 });
+  set({ caseId: null, state: "idle", score: 0, ...FRESH_PROCEDURE });
+}
+
+/** Pick a tool from the tray. Each tool only works in its own step. */
+export function setTool(tool: Tool) {
+  const { step } = snapshot;
+  const allowed =
+    (tool === "swab" && step === "swab") ||
+    (tool === "forceps" && (step === "extract" || step === "close")) ||
+    (tool === "close" && step === "close");
+  if (allowed) set({ tool });
+}
+
+/** Swabbing inside a window fills the meter; at 100, forceps unlock. */
+export function addSwab(amount: number) {
+  if (snapshot.step !== "swab" || snapshot.tool !== "swab" || amount <= 0) return;
+  const swab = Math.min(100, snapshot.swab + amount);
+  if (swab >= 100) set({ swab: 100, step: "extract", tool: "none" });
+  else if (Math.floor(swab) !== Math.floor(snapshot.swab)) set({ swab });
+  else snapshot.swab = swab; // sub-1% progress: keep it without re-rendering
+}
+
+/** Close tool held long enough: the case is done. */
+export function closeCase() {
+  if (snapshot.step !== "close") return;
+  set({ step: "closed", tool: "none" });
 }
 
 export function dispatch(event: GameEvent) {
   const from = snapshot.state;
 
   if (event === "RESET") {
+    // Puts the pieces back. Swab progress stays; a finished case stays closed.
+    if (snapshot.step === "closed") return;
     clearBuzz();
     resetAll();
     sim.hitSite = -1;
-    set({ state: "idle" });
+    const step = snapshot.step === "close" ? "extract" : snapshot.step;
+    set({ state: "idle", step, tool: step === snapshot.step ? snapshot.tool : "forceps" });
     return;
   }
 
@@ -208,7 +256,8 @@ export function dispatch(event: GameEvent) {
   // Score counts per piece; the case clears when every piece is out.
   if (event === "CLEARED" || event === "PIECE_OUT") {
     activeSite().out = true;
-    set({ state: to, score: snapshot.score + 1 });
+    // Last piece out: the Close tool unlocks.
+    set({ state: to, score: snapshot.score + 1, ...(event === "CLEARED" ? { step: "close" as Step } : {}) });
     return;
   }
 

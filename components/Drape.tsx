@@ -35,6 +35,12 @@ function windowsForSites(): Window[] {
   return xs.map((x) => ({ x, v: 0, ax, av: WINDOW_AV }));
 }
 
+/** World-space test for the swab: is (x, z) inside any window's oval? */
+export function inWindow(x: number, z: number) {
+  const az = TORSO_R * LIFT * TORSO_Z_SCALE * Math.sin(WINDOW_AV);
+  return windowsForSites().some((w) => ((x - w.x) / w.ax) ** 2 + (z / az) ** 2 < 1);
+}
+
 const NU = 140;
 const NV = 170;
 const HANG = (TORSO_Y - HEM_Y) / (TORSO_R * LIFT);

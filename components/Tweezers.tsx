@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Mesh, Plane, Quaternion, Raycaster, Vector3 } from "three";
+import { Group, Mesh, Plane, Quaternion, Raycaster, Vector3 } from "three";
 import {
   GRAB_OFFSET,
   GRAB_RADIUS,
@@ -41,8 +41,16 @@ function distToRim(p: Vector3, center: Vector3) {
   return Math.hypot(radial, p.y - center.y);
 }
 
+/** True if p, inside the hole's depth, has reached the cavity wall. Walls
+ *  count as rim: without this, tips deep in the hole pass through them. */
+function touchesWall(p: Vector3, center: Vector3) {
+  if (p.y >= center.y || p.y <= geo.floorY) return false;
+  return Math.hypot(p.x - center.x, p.z - center.z) > geo.rimRadius - TIP_RADIUS;
+}
+
 export default function Tweezers() {
   const { camera, gl, pointer } = useThree();
+  const hand = useRef<Group>(null);
   const arms = [useRef<Mesh>(null), useRef<Mesh>(null)];
   const halfGap = useRef(OPEN_HALF_GAP);
   const pointerSpeed = useRef(0);
@@ -68,7 +76,8 @@ export default function Tweezers() {
     const el = gl.domElement;
     const down = () => {
       unlockAudio();
-      if (getSnapshot().state !== "hover") return;
+      const snap = getSnapshot();
+      if (snap.tool !== "forceps" || snap.state !== "hover") return;
       sim.grabNdc.x = pointer.x;
       sim.grabNdc.y = pointer.y;
       // Small assist: center the tips on the grab point.
@@ -115,6 +124,14 @@ export default function Tweezers() {
 
     // No move events means the hand is still: speed decays to zero.
     pointerSpeed.current *= Math.exp(-dt / SPEED_DECAY_S);
+
+    // Forceps only exist while picked from the tray.
+    const inHand = getSnapshot().tool === "forceps";
+    if (hand.current) hand.current.visible = inHand;
+    if (!inHand) {
+      if (state === "hover") dispatch("TIPS_LEFT");
+      return;
+    }
 
     if (isHeld(state)) {
       // Vertical pointer travel lifts; horizontal still moves (the risk).
@@ -170,6 +187,7 @@ export default function Tweezers() {
           sample.copy(base).addScaledVector(dir, (TIP_LENGTH * s) / 3);
           geo.sites.forEach((site, n) => {
             if (distToRim(sample, site.center) < geo.rimTriggerTube + TIP_RADIUS) rimHit = n;
+            else if (touchesWall(sample, site.center)) rimHit = n;
           });
         }
       }
@@ -200,7 +218,7 @@ export default function Tweezers() {
   });
 
   return (
-    <group renderOrder={INTERIOR_ORDER}>
+    <group ref={hand} visible={false} renderOrder={INTERIOR_ORDER}>
       {arms.map((ref, i) => (
         <mesh key={i} ref={ref} castShadow>
           <boxGeometry args={[ARM_THICK, ARM_LENGTH, ARM_DEPTH]} />
