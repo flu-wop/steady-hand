@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { Suspense, useMemo, useSyncExternalStore } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Object3D } from "three";
 import { CAVITY_CENTER, geo, getSnapshot, subscribe } from "@/lib/gameState";
+import { TABLE_TOP_Y } from "@/lib/patientFit";
 import Patient from "./Patient";
 import Drape from "./Drape";
 import Cavity from "./Cavity";
@@ -13,8 +14,9 @@ import Closure from "./Closure";
 
 // Steep enough that the line of sight reaches the floor of the deepest
 // cavity (Deep, depthScale 1.6) through the opening.
-const CAMERA_POSITION: [number, number, number] = [-0.25, 5.2, 1.6];
-const CAMERA_TARGET: [number, number, number] = [-0.25, 0.7, 0.1];
+// Centered on the patient model, head to feet.
+const CAMERA_POSITION: [number, number, number] = [0.05, 5.2, 1.6];
+const CAMERA_TARGET: [number, number, number] = [0.05, 0.7, 0.1];
 
 export default function Scene() {
   // The tool in hand owns the pointer; with none picked, show the cursor.
@@ -57,13 +59,15 @@ export default function Scene() {
       />
 
       {/* Table */}
-      <mesh position={[0, -0.05, 0]} receiveShadow>
-        <boxGeometry args={[8, 0.1, 5]} />
+      <mesh position={[0, TABLE_TOP_Y / 2 - 0.05, 0]} receiveShadow>
+        <boxGeometry args={[8, TABLE_TOP_Y + 0.1, 5]} />
         <meshStandardMaterial color="#1c1a1f" roughness={0.85} />
       </mesh>
 
-      <Patient />
-      <Drape />
+      <Suspense fallback={null}>
+        <Patient />
+        <Drape />
+      </Suspense>
       {geo.sites.map((_, i) => (
         <Cavity key={i} index={i} />
       ))}

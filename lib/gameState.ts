@@ -43,9 +43,10 @@ export const CLOSE_HOLD_MS = 1000;
 
 /** Center of the cavity opening for single-site cases; the rim sits here. */
 export const CAVITY_CENTER = new Vector3(0.15, 1.2, 0);
-/** Two-site cases: openings mirrored on X about the torso's middle. */
-const TORSO_MID_X = 0.1;
-const TWO_SITE_OFFSET_X = 0.45;
+/** Two-site cases: openings mirrored on X about the middle of the patient's
+ *  chest-to-belly span (public/patient.glb as placed in lib/patientFit.ts). */
+const TORSO_MID_X = 0.2;
+const TWO_SITE_OFFSET_X = 0.35;
 /** Floor of the cavity, at depthScale 1. */
 export const CAVITY_FLOOR_Y = 0.96;
 /** Piece origin sits this far above the cavity floor. */
