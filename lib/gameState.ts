@@ -167,13 +167,15 @@ type Snapshot = {
   state: GameState;
   score: number;
   caseId: string | null;
+  /** Title screen in front of case select. Cases returns to select, not here. */
+  onTitle: boolean;
   step: Step;
   tool: Tool;
   /** Swab meter, 0–100. */
   swab: number;
 };
 const FRESH_PROCEDURE = { step: "swab" as Step, tool: "none" as Tool, swab: 0 };
-let snapshot: Snapshot = { state: "idle", score: 0, caseId: null, ...FRESH_PROCEDURE };
+let snapshot: Snapshot = { state: "idle", score: 0, caseId: null, onTitle: true, ...FRESH_PROCEDURE };
 const listeners = new Set<() => void>();
 let buzzTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -203,6 +205,16 @@ function clearBuzz() {
 export const activeCase = () => (snapshot.caseId ? getCase(snapshot.caseId) : CASES[0]);
 
 export const sitesLeft = () => geo.sites.filter((s) => !s.out).length;
+
+/** Title -> case select. */
+export function leaveTitle() {
+  set({ onTitle: false });
+}
+
+/** Case select -> title (the wordmark). */
+export function goToTitle() {
+  set({ onTitle: true });
+}
 
 /** Pick a case from the select screen; mounts the scene. */
 export function selectCase(id: string) {

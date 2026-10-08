@@ -90,7 +90,7 @@ body {
 }
 
 .select h1 {
-  margin: 0;
+  margin: 0 0 28px;
   font-size: 40px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -392,4 +392,104 @@ body {
 .card-piece {
   font-size: 13px;
   color: #e8c97a;
+}
+
+/* Narrow screens: the tray moves off the patient to a row along the bottom,
+   above the heart rate and the instruction line. */
+@media (max-width: 700px) {
+  .tray {
+    top: auto;
+    right: 8px;
+    left: 8px;
+    bottom: 76px;
+    transform: none;
+    flex-direction: row;
+    padding: 8px;
+  }
+
+  .tray .tool {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .summary {
+    bottom: 150px;
+  }
+}
+
+/* Title screen */
+.title-screen {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.title-head {
+  position: absolute;
+  top: 7%;
+  width: 100%;
+  text-align: center;
+}
+
+.title-head h1 {
+  margin: 0;
+  font-size: clamp(36px, 7vw, 64px);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.title-line {
+  margin: 10px 0 0;
+  font-size: 16px;
+  opacity: 0.75;
+}
+
+.title-play {
+  pointer-events: auto;
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 140px;
+  min-height: 44px;
+  padding: 12px 32px;
+  border: none;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0b0b0d;
+  background: #e8c97a;
+  cursor: pointer;
+}
+
+.title-play:hover,
+.title-play:focus-visible {
+  background: #f2d891;
+  outline: none;
+}
+
+/* Wordmark on the select screen, back to title */
+.wordmark {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 8px 4px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: inherit;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.wordmark:hover,
+.wordmark:focus-visible {
+  opacity: 1;
+  outline: none;
 }

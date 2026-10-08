@@ -1,13 +1,15 @@
 "use client";
 
 import { CASES, pieceLabels } from "@/lib/cases";
-import { selectCase } from "@/lib/gameState";
+import { goToTitle, selectCase } from "@/lib/gameState";
 
 export default function CaseSelect() {
   return (
     <div className="select">
-      <h1>Steady Hand</h1>
-      <p className="select-sub">Pick a case.</p>
+      <button type="button" className="wordmark" onClick={goToTitle}>
+        Steady Hand
+      </button>
+      <h1>Pick a case.</h1>
       <div className="cards">
         {CASES.map((c) => (
           <button key={c.id} type="button" className="card" onClick={() => selectCase(c.id)}>
