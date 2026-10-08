@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import HeartRate from "./HeartRate";
 import ToolTray from "./ToolTray";
-import { activeCase, dispatch, exitToCases, getSnapshot, subscribe } from "@/lib/gameState";
+import { activeCase, dispatch, exitToCases, geo, getSnapshot, sitesLeft, subscribe } from "@/lib/gameState";
 
 export default function GameUI() {
   const { state, score } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -15,6 +15,11 @@ export default function GameUI() {
           Score <strong>{score}</strong>
         </div>
         <div className="state">state: {state}</div>
+        {geo.sites.length > 1 && (
+          <div className="sites">
+            Out {geo.sites.length - sitesLeft()}/{geo.sites.length}
+          </div>
+        )}
         <button type="button" onClick={() => dispatch("RESET")}>
           Reset
         </button>

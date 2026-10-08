@@ -3,14 +3,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AlwaysDepth, BackSide, Color, Group, MeshStandardMaterial } from "three";
-import {
-  CAVITY_CENTER,
-  GRAB_OFFSET,
-  geo,
-  getSnapshot,
-  isHeld,
-  sim,
-} from "@/lib/gameState";
+import { GRAB_OFFSET, geo, getSnapshot, isHeld, sim } from "@/lib/gameState";
 
 /**
  * Draw order that makes a hole in a solid capsule without CSG:
@@ -27,26 +20,29 @@ const BUZZ_RED = new Color("#ff2a2a");
 const BONE = "#efe6d2";
 const GRIP = "#4fc3d9";
 
-/** Recessed hole with a metal rim, plus the piece that sits in it. */
-export default function Cavity() {
+/** One site: recessed hole with a metal rim, plus the piece that sits in it. */
+export default function Cavity({ index }: { index: number }) {
+  // Read once at mount; the scene remounts when the case changes.
+  const site = geo.sites[index];
   const rimMat = useRef<MeshStandardMaterial>(null);
   const piece = useRef<Group>(null);
   const fallSpeed = useRef(0);
 
   useFrame((_, dt) => {
     const { state } = getSnapshot();
-    const buzzing = state === "buzz";
+    // Only the rim that was hit flashes red.
+    const buzzing = state === "buzz" && sim.hitSite === index;
 
-    // Rim flashes red during buzz.
     if (rimMat.current) {
       rimMat.current.color.lerp(buzzing ? BUZZ_RED : METAL, Math.min(1, dt * 25));
       rimMat.current.emissive.set(buzzing ? BUZZ_RED : "#000000").multiplyScalar(0.6);
     }
 
-    // When nothing holds the piece, it falls back into the cavity.
-    if (!isHeld(state) && sim.pieceVisible) {
-      const p = sim.piece;
-      const rest = geo.pieceRest;
+    // When the tweezers aren't holding this piece, it falls back into the cavity.
+    const inHand = isHeld(state) && sim.active === index;
+    if (!inHand && !site.out) {
+      const p = site.piece;
+      const rest = site.rest;
       p.x += (rest.x - p.x) * Math.min(1, dt * 10);
       p.z += (rest.z - p.z) * Math.min(1, dt * 10);
       if (p.y > rest.y) {
@@ -60,18 +56,17 @@ export default function Cavity() {
     }
 
     if (piece.current) {
-      piece.current.position.copy(sim.piece);
-      piece.current.visible = sim.pieceVisible;
+      piece.current.position.copy(site.piece);
+      piece.current.visible = !site.out;
     }
   });
 
-  // Read once at mount; the scene remounts when the case changes.
   const { rimRadius, rimTube, rimTriggerTube } = geo;
-  const depth = CAVITY_CENTER.y - geo.floorY;
+  const depth = site.center.y - geo.floorY;
 
   return (
     <group>
-      <group position={CAVITY_CENTER}>
+      <group position={site.center}>
         {/* Hole interior */}
         <group renderOrder={INTERIOR_ORDER}>
           <mesh position={[0, -depth / 2, 0]}>
@@ -105,7 +100,7 @@ export default function Cavity() {
       </group>
 
       {/* The piece: a stylized bone with a grab nub on top. */}
-      <group ref={piece} position={geo.pieceRest} renderOrder={INTERIOR_ORDER}>
+      <group ref={piece} position={site.rest} renderOrder={INTERIOR_ORDER}>
         <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[0.028, 0.028, 0.2, 8]} />
           <meshStandardMaterial color={BONE} roughness={0.6} flatShading />

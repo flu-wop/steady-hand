@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Object3D } from "three";
-import { CAVITY_CENTER } from "@/lib/gameState";
+import { CAVITY_CENTER, geo } from "@/lib/gameState";
 import Patient from "./Patient";
 import Drape from "./Drape";
 import Cavity from "./Cavity";
@@ -16,8 +16,10 @@ const CAMERA_TARGET: [number, number, number] = [-0.25, 0.7, 0.1];
 
 export default function Scene() {
   const lampTarget = useMemo(() => {
+    // Aim between the sites so one lamp covers them all.
     const o = new Object3D();
     o.position.copy(CAVITY_CENTER);
+    o.position.x = geo.sites.reduce((x, s) => x + s.center.x, 0) / geo.sites.length;
     return o;
   }, []);
 
@@ -38,7 +40,7 @@ export default function Scene() {
       {/* Overhead surgical lamp, aimed at the cavity */}
       <primitive object={lampTarget} />
       <spotLight
-        position={[CAVITY_CENTER.x + 0.3, 4.6, 0.9]}
+        position={[lampTarget.position.x + 0.3, 4.6, 0.9]}
         target={lampTarget}
         angle={0.42}
         penumbra={0.6}
@@ -58,7 +60,9 @@ export default function Scene() {
 
       <Patient />
       <Drape />
-      <Cavity />
+      {geo.sites.map((_, i) => (
+        <Cavity key={i} index={i} />
+      ))}
       <Tweezers />
     </Canvas>
   );

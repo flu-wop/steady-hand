@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { BufferGeometry, DoubleSide, Float32BufferAttribute } from "three";
-import { CAVITY_CENTER, activeCase } from "@/lib/gameState";
+import { activeCase, geo } from "@/lib/gameState";
 
 // Torso it covers (matches Patient.tsx): capsule along X, radius 0.6,
 // straight section x ∈ [-0.6, 0.8], center y 0.6, flattened 1.3× in Z.
@@ -20,8 +20,20 @@ const X_MAX = 1.45;
 /** Hem height above the table. */
 const HEM_Y = 0.02;
 
-/** Oval window around the cavity, in sheet space (x, arc angle). */
-const WINDOW = { x: CAVITY_CENTER.x, v: 0, ax: 0.46, av: 0.52 };
+/** Oval window around each cavity, in sheet space (x, arc angle). */
+const WINDOW_AX = 0.46;
+const WINDOW_AV = 0.52;
+/** Keep a strip of sheet between neighbouring windows. */
+const WINDOW_GAP = 0.1;
+
+type Window = { x: number; v: number; ax: number; av: number };
+
+function windowsForSites(): Window[] {
+  const xs = geo.sites.map((s) => s.center.x);
+  let ax = WINDOW_AX;
+  for (let i = 1; i < xs.length; i++) ax = Math.min(ax, (xs[i] - xs[i - 1] - WINDOW_GAP) / 2);
+  return xs.map((x) => ({ x, v: 0, ax, av: WINDOW_AV }));
+}
 
 const NU = 140;
 const NV = 170;
@@ -47,8 +59,9 @@ function surface(u: number, v: number): [number, number, number] {
   return [u, y, z];
 }
 
-/** Grid sheet with the window cut out; edge vertices snapped onto the oval. */
+/** Grid sheet with the windows cut out; edge vertices snapped onto the ovals. */
 function buildDrape() {
+  const windows = windowsForSites();
   const cols = NU + 1;
   const pos: number[] = [];
   const params: [number, number][] = [];
@@ -58,7 +71,18 @@ function buildDrape() {
       params.push([X_MIN + ((X_MAX - X_MIN) * i) / NU, -V_MAX + (2 * V_MAX * j) / NV]);
     }
   }
-  const e = params.map(([u, v]) => Math.hypot((u - WINDOW.x) / WINDOW.ax, (v - WINDOW.v) / WINDOW.av));
+  // Normalized distance to the nearest window (< 1 is inside it).
+  const nearest: Window[] = params.map(([u, v]) =>
+    windows.reduce((best, w) =>
+      Math.hypot((u - w.x) / w.ax, (v - w.v) / w.av) < Math.hypot((u - best.x) / best.ax, (v - best.v) / best.av)
+        ? w
+        : best,
+    ),
+  );
+  const e = params.map(([u, v], n) => {
+    const w = nearest[n];
+    return Math.hypot((u - w.x) / w.ax, (v - w.v) / w.av);
+  });
 
   const outside = e.map((x) => x >= 1);
   const near = (i: number, j: number) => {
@@ -74,8 +98,9 @@ function buildDrape() {
       let [u, v] = params[n];
       // Inside vertices next to the sheet (incl. diagonals) move onto the oval.
       if (!outside[n] && near(i, j)) {
-        u = WINDOW.x + (u - WINDOW.x) / e[n];
-        v = WINDOW.v + (v - WINDOW.v) / e[n];
+        const w = nearest[n];
+        u = w.x + (u - w.x) / e[n];
+        v = w.v + (v - w.v) / e[n];
       }
       pos.push(...surface(u, v));
     }
