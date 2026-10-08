@@ -369,3 +369,8 @@ body {
   background: #9fe3b0;
   border: none;
 }
+
+.card-piece {
+  font-size: 13px;
+  color: #e8c97a;
+}

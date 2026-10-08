@@ -3,7 +3,8 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { AlwaysDepth, BackSide, Color, Group, MeshStandardMaterial } from "three";
-import { GRAB_OFFSET, geo, getSnapshot, isHeld, sim } from "@/lib/gameState";
+import { GRAB_OFFSET, activeCase, geo, getSnapshot, isHeld, sim } from "@/lib/gameState";
+import Piece from "./Piece";
 
 /**
  * Draw order that makes a hole in a solid capsule without CSG:
@@ -17,13 +18,13 @@ const MASK_ORDER = -1;
 
 const METAL = new Color("#b8bcc4");
 const BUZZ_RED = new Color("#ff2a2a");
-const BONE = "#efe6d2";
-const GRIP = "#4fc3d9";
 
 /** One site: recessed hole with a metal rim, plus the piece that sits in it. */
 export default function Cavity({ index }: { index: number }) {
   // Read once at mount; the scene remounts when the case changes.
   const site = geo.sites[index];
+  const pieces = activeCase().pieces;
+  const pieceId = pieces[index] ?? pieces[0];
   const rimMat = useRef<MeshStandardMaterial>(null);
   const piece = useRef<Group>(null);
   const fallSpeed = useRef(0);
@@ -99,28 +100,9 @@ export default function Cavity({ index }: { index: number }) {
         </mesh>
       </group>
 
-      {/* The piece: a stylized bone with a grab nub on top. */}
+      {/* The piece for this site. Look only; grab point and rim tests are in code. */}
       <group ref={piece} position={site.rest} renderOrder={INTERIOR_ORDER}>
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.028, 0.028, 0.2, 8]} />
-          <meshStandardMaterial color={BONE} roughness={0.6} flatShading />
-        </mesh>
-        {[-0.1, 0.1].flatMap((x) =>
-          [-0.03, 0.03].map((z) => (
-            <mesh key={`${x}${z}`} position={[x, 0, z]} castShadow>
-              <sphereGeometry args={[0.04, 8, 6]} />
-              <meshStandardMaterial color={BONE} roughness={0.6} flatShading />
-            </mesh>
-          )),
-        )}
-        <mesh position={[0, GRAB_OFFSET.y / 2, 0]}>
-          <cylinderGeometry args={[0.008, 0.008, GRAB_OFFSET.y, 6]} />
-          <meshStandardMaterial color={GRIP} roughness={0.4} />
-        </mesh>
-        <mesh position={GRAB_OFFSET}>
-          <sphereGeometry args={[0.022, 8, 6]} />
-          <meshStandardMaterial color={GRIP} roughness={0.4} emissive="#1b6f80" emissiveIntensity={0.5} />
-        </mesh>
+        <Piece id={pieceId} grab={GRAB_OFFSET.y} />
       </group>
     </group>
   );

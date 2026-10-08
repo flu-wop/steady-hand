@@ -41,11 +41,16 @@ function distToRim(p: Vector3, center: Vector3) {
   return Math.hypot(radial, p.y - center.y);
 }
 
+/** How far past the wall a tip can be and still count as touching it. Keeps
+ *  one site's wall from claiming tips that are down inside another site. */
+const WALL_THICKNESS = 0.1;
+
 /** True if p, inside the hole's depth, has reached the cavity wall. Walls
  *  count as rim: without this, tips deep in the hole pass through them. */
 function touchesWall(p: Vector3, center: Vector3) {
   if (p.y >= center.y || p.y <= geo.floorY) return false;
-  return Math.hypot(p.x - center.x, p.z - center.z) > geo.rimRadius - TIP_RADIUS;
+  const r = Math.hypot(p.x - center.x, p.z - center.z);
+  return r > geo.rimRadius - TIP_RADIUS && r < geo.rimRadius + WALL_THICKNESS;
 }
 
 export default function Tweezers() {
