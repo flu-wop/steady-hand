@@ -3,6 +3,8 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  /* No rubber-band or pull-to-refresh while dragging on a phone. */
+  overscroll-behavior: none;
   background: #0b0b0d;
   color: #eee6da;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -222,8 +224,13 @@ body {
 }
 
 .tool {
+  position: relative;
   pointer-events: auto;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   width: 96px;
   padding: 10px 0;
   border-radius: 6px;
@@ -232,6 +239,18 @@ body {
   color: inherit;
   background: #222026;
   border: 1px solid #3a3640;
+}
+
+/* Invisible 44px-tall hit area around each tray button; looks unchanged. */
+.tool::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  min-height: 100%;
+  transform: translateY(-50%);
 }
 
 .tool:disabled {
@@ -273,7 +292,6 @@ body {
 
 .tool-hold {
   position: relative;
-  overflow: hidden;
   touch-action: none;
   user-select: none;
 }
@@ -281,6 +299,7 @@ body {
 .tool-hold-fill {
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background: rgba(127, 224, 160, 0.35);
   transform-origin: left center;
   pointer-events: none;

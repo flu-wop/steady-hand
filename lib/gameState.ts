@@ -32,6 +32,11 @@ export const LIFT_START = 0.01;
 export const GRAB_RADIUS = 0.08;
 /** Height of the plane the tips float on when not holding anything. */
 export const HOVER_HEIGHT = 1.35;
+/** Phone (coarse pointer) only: fingers are fatter than a mouse. Desktop is 1. */
+export const PHONE_RIM = 1.35;
+export const PHONE_GRAB = 1.5;
+const isCoarsePointer = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
 /** How long the buzz state lasts before the piece resets. */
 export const BUZZ_MS = 700;
 /** Swab meter gained per world unit dragged inside a window (0–100). */
@@ -71,6 +76,7 @@ export const geo = {
   rimRadius: RIM_RADIUS,
   rimTube: RIM_TUBE,
   rimTriggerTube: RIM_TRIGGER_TUBE,
+  grabRadius: GRAB_RADIUS,
   floorY: CAVITY_FLOOR_Y,
   clearHeight: CLEAR_HEIGHT,
   drift: 0,
@@ -87,7 +93,9 @@ function applyCase(c: Case) {
   // metal you see and the distance that buzzes stay in proportion.
   geo.rimRadius = RIM_RADIUS * c.rimScale;
   geo.rimTube = RIM_TUBE * c.rimScale;
-  geo.rimTriggerTube = RIM_TRIGGER_TUBE * c.rimScale;
+  const phone = isCoarsePointer();
+  geo.rimTriggerTube = RIM_TRIGGER_TUBE * c.rimScale * (phone ? PHONE_RIM : 1);
+  geo.grabRadius = GRAB_RADIUS * (phone ? PHONE_GRAB : 1);
   // Deeper floor lowers the piece rest; clearance above the rim scales too.
   geo.floorY = CAVITY_CENTER.y - (CAVITY_CENTER.y - CAVITY_FLOOR_Y) * c.depthScale;
   geo.clearHeight = CAVITY_CENTER.y + (CLEAR_HEIGHT - CAVITY_CENTER.y) * c.depthScale;

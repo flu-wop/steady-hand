@@ -26,8 +26,13 @@ export default function Swab() {
 
   useEffect(() => {
     const el = gl.domElement;
-    const down = () => {
-      if (getSnapshot().tool === "swab") pressed.current = true;
+    const down = (e: PointerEvent) => {
+      if (getSnapshot().tool !== "swab") return;
+      // Touch: start the stroke where the finger lands, not where the pointer last was.
+      const r = el.getBoundingClientRect();
+      pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      last.current = null;
+      pressed.current = true;
     };
     const up = () => {
       pressed.current = false;
@@ -35,11 +40,13 @@ export default function Swab() {
     };
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
     return () => {
       el.removeEventListener("pointerdown", down);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
     };
-  }, [gl]);
+  }, [gl, pointer]);
 
   useFrame(() => {
     const g = group.current;

@@ -5,7 +5,6 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Group, Mesh, Plane, Quaternion, Raycaster, Vector3 } from "three";
 import {
   GRAB_OFFSET,
-  GRAB_RADIUS,
   HOVER_HEIGHT,
   LATERAL_SCALE,
   LIFT_SCALE,
@@ -53,6 +52,18 @@ function touchesWall(p: Vector3, center: Vector3) {
   return r > geo.rimRadius - TIP_RADIUS && r < geo.rimRadius + WALL_THICKNESS;
 }
 
+/** Index of the resting piece whose grab point is within reach of (x, z), or -1. */
+function pieceUnder(x: number, z: number) {
+  let over = -1;
+  geo.sites.forEach((site, n) => {
+    if (site.out || site.piece.y > site.rest.y + 0.001) return;
+    const gx = site.piece.x + GRAB_OFFSET.x;
+    const gz = site.piece.z + GRAB_OFFSET.z;
+    if (Math.hypot(x - gx, z - gz) < geo.grabRadius) over = n;
+  });
+  return over;
+}
+
 export default function Tweezers() {
   const { camera, gl, pointer } = useThree();
   const hand = useRef<Group>(null);
@@ -79,10 +90,29 @@ export default function Tweezers() {
   // Pointer down grabs, pointer up anywhere drops.
   useEffect(() => {
     const el = gl.domElement;
-    const down = () => {
+    const down = (e: PointerEvent) => {
       unlockAudio();
       const snap = getSnapshot();
-      if (snap.tool !== "forceps" || snap.state !== "hover") return;
+      if (snap.tool !== "forceps") return;
+
+      // Touch has no hover: the finger lands without the tips having been
+      // over the piece. Bring the tips to the finger and run the same
+      // idle -> hover step before the grab. Mouse is unchanged.
+      if (e.pointerType !== "mouse" && snap.state === "idle") {
+        const r = el.getBoundingClientRect();
+        pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+        tmp.ray.setFromCamera(pointer, camera);
+        if (tmp.ray.ray.intersectPlane(tmp.plane, tmp.hit)) {
+          sim.tip.copy(tmp.hit);
+          const over = pieceUnder(tmp.hit.x, tmp.hit.z);
+          if (over >= 0) {
+            sim.active = over;
+            dispatch("TIPS_OVER");
+          }
+        }
+      }
+
+      if (getSnapshot().state !== "hover") return;
       sim.grabNdc.x = pointer.x;
       sim.grabNdc.y = pointer.y;
       // Small assist: center the tips on the grab point.
@@ -115,13 +145,16 @@ export default function Tweezers() {
 
     el.addEventListener("pointerdown", down);
     window.addEventListener("pointerup", up);
+    // A cancelled touch (e.g. the OS took the gesture) drops like a release.
+    window.addEventListener("pointercancel", up);
     window.addEventListener("pointermove", move);
     return () => {
       el.removeEventListener("pointerdown", down);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
       window.removeEventListener("pointermove", move);
     };
-  }, [gl, pointer]);
+  }, [gl, pointer, camera, tmp]);
 
   useFrame((_, dt) => {
     const { state } = getSnapshot();
@@ -209,13 +242,7 @@ export default function Tweezers() {
       }
     } else if (now === "idle" || now === "hover") {
       // Which resting piece, if any, is under the tips?
-      let over = -1;
-      geo.sites.forEach((site, n) => {
-        if (site.out || site.piece.y > site.rest.y + 0.001) return;
-        const gx = site.piece.x + GRAB_OFFSET.x;
-        const gz = site.piece.z + GRAB_OFFSET.z;
-        if (Math.hypot(sim.tip.x - gx, sim.tip.z - gz) < GRAB_RADIUS) over = n;
-      });
+      const over = pieceUnder(sim.tip.x, sim.tip.z);
       if (over >= 0) sim.active = over;
       if (over >= 0 && now === "idle") dispatch("TIPS_OVER");
       if (over < 0 && now === "hover") dispatch("TIPS_LEFT");
